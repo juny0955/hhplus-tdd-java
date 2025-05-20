@@ -5,7 +5,6 @@ import static org.junit.jupiter.api.Assertions.*;
 import static org.mockito.Mockito.*;
 
 import java.util.List;
-import java.util.NoSuchElementException;
 
 import org.junit.jupiter.api.Test;
 import org.junit.jupiter.api.extension.ExtendWith;
@@ -42,17 +41,6 @@ class PointServiceTest {
 	}
 
 	@Test
-	void 유저포인트조회_예외_유저포인트_찾을수없음() {
-		long userId = 1;
-
-		when(userPointTable.selectById(userId)).thenReturn(null);
-
-		assertThrows(NoSuchElementException.class, () -> pointService.getUserPoint(userId));
-
-		verify(userPointTable, times(1)).selectById(userId);
-	}
-
-	@Test
 	void 유저포인트내역조회_정상() {
 		long pointHistoryId = 1;
 		long userId = 1;
@@ -60,30 +48,12 @@ class PointServiceTest {
 			new PointHistory(pointHistoryId, userId, 100, TransactionType.CHARGE, System.currentTimeMillis())
 		);
 
-		when(userPointTable.selectById(userId)).thenReturn(UserPoint.empty(userId));
 		when(pointHistoryTable.selectAllByUserId(userId)).thenReturn(pointHistories);
 
 		List<PointHistory> result = pointService.getUserPointHistories(userId);
 
-		verify(userPointTable, times(1)).selectById(userId);
 		verify(pointHistoryTable, times(1)).selectAllByUserId(userId);
 		assertThat(result).isEqualTo(pointHistories);
-	}
-
-	@Test
-	void 유저포인트내역조회_예외_유저포인트_찾을수없음() {
-		long pointHistoryId = 1;
-		long userId = 1;
-		List<PointHistory> pointHistories = List.of(
-			new PointHistory(pointHistoryId, userId, 100, TransactionType.CHARGE, System.currentTimeMillis())
-		);
-
-		when(userPointTable.selectById(userId)).thenReturn(null);
-
-		assertThrows(NoSuchElementException.class, () -> pointService.getUserPointHistories(userId));
-
-		verify(userPointTable, times(1)).selectById(userId);
-		verify(pointHistoryTable, never()).selectAllByUserId(userId);
 	}
 
 	@Test
@@ -103,21 +73,6 @@ class PointServiceTest {
 		verify(pointHistoryTable, times(1)).insert(eq(userId), eq(amount), eq(TransactionType.CHARGE), anyLong());
 		assertThat(result).isEqualTo(updatedUserPoint);
 		assertThat(result.point()).isEqualTo(updatedUserPoint.point());
-	}
-
-	@Test
-	void 유저포인트충전_예외_유저포인트_찾을수없음() {
-		long userId = 1;
-		long amount = 1000;
-		UserPoint userPoint = new UserPoint(userId, 10000, System.currentTimeMillis());
-
-		when(userPointTable.selectById(userId)).thenReturn(null);
-
-		assertThrows(NoSuchElementException.class, () -> pointService.chargeUserPoint(userId, amount));
-
-		verify(userPointTable, times(1)).selectById(userId);
-		verify(userPointTable, never()).insertOrUpdate(userId, userPoint.point() + amount);
-		verify(pointHistoryTable, never()).insert(eq(userId), eq(amount), eq(TransactionType.CHARGE), anyLong());
 	}
 
 	/**
@@ -215,21 +170,6 @@ class PointServiceTest {
 		verify(pointHistoryTable, times(1)).insert(eq(userId), eq(amount), eq(TransactionType.USE), anyLong());
 		assertThat(result).isEqualTo(updatedUserPoint);
 		assertThat(result.point()).isEqualTo(updatedUserPoint.point());
-	}
-
-	@Test
-	void 유저포인트사용_예외_유저포인트_찾을수없음() {
-		long userId = 1;
-		long amount = 1000;
-		UserPoint userPoint = new UserPoint(userId, 10000, System.currentTimeMillis());
-
-		when(userPointTable.selectById(userId)).thenReturn(null);
-
-		assertThrows(NoSuchElementException.class, () -> pointService.useUserPoint(userId, amount));
-
-		verify(userPointTable, times(1)).selectById(userId);
-		verify(userPointTable, never()).insertOrUpdate(userId, userPoint.point() - amount);
-		verify(pointHistoryTable, never()).insert(eq(userId), eq(amount), eq(TransactionType.USE), anyLong());
 	}
 
 	@Test

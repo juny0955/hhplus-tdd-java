@@ -1,7 +1,6 @@
 package io.hhplus.tdd.point;
 
 import java.util.List;
-import java.util.NoSuchElementException;
 
 import org.springframework.stereotype.Service;
 
@@ -13,6 +12,9 @@ import lombok.RequiredArgsConstructor;
 @RequiredArgsConstructor
 public class PointService {
 
+	private static final long MIN_CHARGE_POINT = 500;
+	private static final long MAX_USE_POINT = 5000;
+
 	private final UserPointTable userPointTable;
 	private final PointHistoryTable pointHistoryTable;
 
@@ -22,12 +24,7 @@ public class PointService {
 	 * @return 조회한 유저 포인트
 	 */
 	public UserPoint getUserPoint(long userId) {
-		UserPoint userPoint = userPointTable.selectById(userId);
-
-		if (userPoint == null)
-			throw new NoSuchElementException("유저 포인트가 존재하지 않습니다.");
-
-		return userPoint;
+		return userPointTable.selectById(userId);
 	}
 
 	/**
@@ -36,11 +33,6 @@ public class PointService {
 	 * @return 조회한 유저 포인트 내역 목록
 	 */
 	public List<PointHistory> getUserPointHistories(long userId) {
-		UserPoint userPoint = userPointTable.selectById(userId);
-
-		if (userPoint == null)
-			throw new NoSuchElementException("유저 포인트가 존재하지 않습니다.");
-
 		return pointHistoryTable.selectAllByUserId(userId);
 	}
 
@@ -51,20 +43,12 @@ public class PointService {
 	 * @return 충전 후 유저 포인트
 	 */
 	public UserPoint chargeUserPoint(long userId, long amount) {
-		if (amount < 500)
+		if (amount < MIN_CHARGE_POINT)
 			throw new IllegalArgumentException("최소 충전 포인트는 500원 이상이어야 합니다");
 
 		UserPoint userPoint = userPointTable.selectById(userId);
 
-		if (userPoint == null)
-			throw new NoSuchElementException("유저 포인트가 존재하지 않습니다.");
-
-		if (userPoint.point() + amount > 100000)
-			throw new IllegalArgumentException("유저의 보유 포인트는 10만원을 넘을수 없습니다");
-
-		UserPoint updateUserPoint = userPointTable.insertOrUpdate(userId, userPoint.point() + amount);
-		pointHistoryTable.insert(userId, amount, TransactionType.CHARGE, System.currentTimeMillis());
-		return updateUserPoint;
+		return processUpdateUserPoint(userPoint.validateMaxPoint(amount), amount, TransactionType.CHARGE);
 	}
 
 	/**
@@ -74,19 +58,29 @@ public class PointService {
 	 * @return 사용 후 유저 포인트
 	 */
 	public UserPoint useUserPoint(long userId, long amount) {
-		if (amount > 5000)
+		if (amount > MAX_USE_POINT)
 			throw new IllegalArgumentException("최대 사용가능한 포인트는 5000원 입니다");
 
 		UserPoint userPoint = userPointTable.selectById(userId);
 
-		if (userPoint == null)
-			throw new NoSuchElementException("유저 포인트가 존재하지 않습니다.");
+		return processUpdateUserPoint(userPoint.validateLeftPoint(amount), amount, TransactionType.USE);
+	}
 
-		if (userPoint.point() - amount < 0)
-			throw new IllegalArgumentException("사용가능한 포인트가 부족합니다");
+	/**
+	 * UserPoint 수정 후 PointHistoryTable에 이력 저장
+	 * @param userPoint 수정할 UserPoint
+	 * @param amount 수정할 금액
+	 * @param transactionType 수정 타입
+	 * @return 수정된 UserPoint
+	 */
+	private UserPoint processUpdateUserPoint(UserPoint userPoint, long amount, TransactionType transactionType) {
+		long calculateAmount = transactionType == TransactionType.CHARGE ?
+			userPoint.point() + amount :
+			userPoint.point() - amount;
 
-		UserPoint updatedUserPoint = userPointTable.insertOrUpdate(userId, userPoint.point() - amount);
-		pointHistoryTable.insert(userId, amount, TransactionType.USE, System.currentTimeMillis());
+		UserPoint updatedUserPoint = userPointTable.insertOrUpdate(userPoint.id(), calculateAmount);
+		pointHistoryTable.insert(userPoint.id(), amount, transactionType, System.currentTimeMillis());
+
 		return updatedUserPoint;
 	}
 }
