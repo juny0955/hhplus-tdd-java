@@ -34,7 +34,20 @@ public class PointService {
 	}
 
 	public UserPoint chargeUserPoint(long userId, long amount) {
-		return null;
+		if (amount < 500)
+			throw new IllegalArgumentException("최소 충전 포인트는 500원 이상이어야 합니다");
+
+		UserPoint userPoint = userPointTable.selectById(userId);
+
+		if (userPoint == null)
+			throw new IllegalArgumentException("유저가 존재하지 않습니다");
+
+		if (userPoint.point() + amount > 100000)
+			throw new IllegalArgumentException("유저의 보유 포인트는 10만원을 넘을수 없습니다");
+
+		UserPoint updateUserPoint = userPointTable.insertOrUpdate(userId, userPoint.point() + amount);
+		pointHistoryTable.insert(userId, amount, TransactionType.CHARGE, System.currentTimeMillis());
+		return updateUserPoint;
 	}
 
 	public UserPoint useUserPoint(long userId, long amount) {
