@@ -1,6 +1,7 @@
 package io.hhplus.tdd.point;
 
 import java.util.List;
+import java.util.NoSuchElementException;
 
 import org.springframework.stereotype.Service;
 
@@ -15,11 +16,16 @@ public class PointService {
 	private final UserPointTable userPointTable;
 	private final PointHistoryTable pointHistoryTable;
 
+	/**
+	 * userId에 해당하는 유저 포인트 조회
+	 * @param userId
+	 * @return
+	 */
 	public UserPoint getUserPoint(long userId) {
 		UserPoint userPoint = userPointTable.selectById(userId);
 
 		if (userPoint == null)
-			throw new IllegalArgumentException("유저가 존재하지 않습니다.");
+			throw new NoSuchElementException("유저 포인트가 존재하지 않습니다.");
 
 		return userPoint;
 	}
@@ -28,7 +34,7 @@ public class PointService {
 		UserPoint userPoint = userPointTable.selectById(userId);
 
 		if (userPoint == null)
-			throw new IllegalArgumentException("유저가 존재하지 않습니다");
+			throw new NoSuchElementException("유저 포인트가 존재하지 않습니다.");
 
 		return pointHistoryTable.selectAllByUserId(userId);
 	}
@@ -40,7 +46,7 @@ public class PointService {
 		UserPoint userPoint = userPointTable.selectById(userId);
 
 		if (userPoint == null)
-			throw new IllegalArgumentException("유저가 존재하지 않습니다");
+			throw new NoSuchElementException("유저 포인트가 존재하지 않습니다.");
 
 		if (userPoint.point() + amount > 100000)
 			throw new IllegalArgumentException("유저의 보유 포인트는 10만원을 넘을수 없습니다");
@@ -57,7 +63,7 @@ public class PointService {
 		UserPoint userPoint = userPointTable.selectById(userId);
 
 		if (userPoint == null)
-			throw new IllegalArgumentException("유저가 존재하지 않습니다");
+			throw new NoSuchElementException("유저 포인트가 존재하지 않습니다.");
 
 		if (userPoint.point() - amount < 0)
 			throw new IllegalArgumentException("사용가능한 포인트가 부족합니다");

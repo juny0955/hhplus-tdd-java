@@ -5,6 +5,7 @@ import static org.junit.jupiter.api.Assertions.*;
 import static org.mockito.Mockito.*;
 
 import java.util.List;
+import java.util.NoSuchElementException;
 
 import org.junit.jupiter.api.Test;
 import org.junit.jupiter.api.extension.ExtendWith;
@@ -41,12 +42,12 @@ class PointServiceTest {
 	}
 
 	@Test
-	void 유저포인트조회_예외_유저존재하지않음() {
+	void 유저포인트조회_예외_유저포인트_찾을수없음() {
 		long userId = 1;
 
 		when(userPointTable.selectById(userId)).thenReturn(null);
 
-		assertThrows(IllegalArgumentException.class, () -> pointService.getUserPoint(userId));
+		assertThrows(NoSuchElementException.class, () -> pointService.getUserPoint(userId));
 
 		verify(userPointTable, times(1)).selectById(userId);
 	}
@@ -70,7 +71,7 @@ class PointServiceTest {
 	}
 
 	@Test
-	void 유저포인트내역조회_예외_유저존재하지않음() {
+	void 유저포인트내역조회_예외_유저포인트_찾을수없음() {
 		long pointHistoryId = 1;
 		long userId = 1;
 		List<PointHistory> pointHistories = List.of(
@@ -79,7 +80,7 @@ class PointServiceTest {
 
 		when(userPointTable.selectById(userId)).thenReturn(null);
 
-		assertThrows(IllegalArgumentException.class, () -> pointService.getUserPointHistories(userId));
+		assertThrows(NoSuchElementException.class, () -> pointService.getUserPointHistories(userId));
 
 		verify(userPointTable, times(1)).selectById(userId);
 		verify(pointHistoryTable, never()).selectAllByUserId(userId);
@@ -105,14 +106,14 @@ class PointServiceTest {
 	}
 
 	@Test
-	void 유저포인트충전_예외_유저찾을수없음() {
+	void 유저포인트충전_예외_유저포인트_찾을수없음() {
 		long userId = 1;
 		long amount = 1000;
 		UserPoint userPoint = new UserPoint(userId, 10000, System.currentTimeMillis());
 
 		when(userPointTable.selectById(userId)).thenReturn(null);
 
-		assertThrows(IllegalArgumentException.class, () -> pointService.chargeUserPoint(userId, amount));
+		assertThrows(NoSuchElementException.class, () -> pointService.chargeUserPoint(userId, amount));
 
 		verify(userPointTable, times(1)).selectById(userId);
 		verify(userPointTable, never()).insertOrUpdate(userId, userPoint.point() + amount);
@@ -123,7 +124,7 @@ class PointServiceTest {
 	 * 유저의 최대 보유 포인트는 10만원을 넘을 수 없음
 	 */
 	@Test
-	void 유저포인트충전_예외_최대포인트초과() {
+	void 유저포인트충전_예외_최대보유포인트초과() {
 		long userId = 1;
 		long amount = 1000;
 		UserPoint userPoint = new UserPoint(userId, 99999, System.currentTimeMillis());
@@ -217,14 +218,14 @@ class PointServiceTest {
 	}
 
 	@Test
-	void 유저포인트사용_예외_유저찾을수없음() {
+	void 유저포인트사용_예외_유저포인트_찾을수없음() {
 		long userId = 1;
 		long amount = 1000;
 		UserPoint userPoint = new UserPoint(userId, 10000, System.currentTimeMillis());
 
 		when(userPointTable.selectById(userId)).thenReturn(null);
 
-		assertThrows(IllegalArgumentException.class, () -> pointService.useUserPoint(userId, amount));
+		assertThrows(NoSuchElementException.class, () -> pointService.useUserPoint(userId, amount));
 
 		verify(userPointTable, times(1)).selectById(userId);
 		verify(userPointTable, never()).insertOrUpdate(userId, userPoint.point() - amount);
