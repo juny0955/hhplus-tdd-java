@@ -74,9 +74,9 @@ public class PointService {
 	 * @return 수정된 UserPoint
 	 */
 	private UserPoint processUpdateUserPoint(UserPoint userPoint, long amount, TransactionType transactionType) {
-		long calculateAmount = transactionType == TransactionType.CHARGE ?
-			userPoint.point() + amount :
-			userPoint.point() - amount;
+		long calculateAmount = transactionType.equals(TransactionType.CHARGE)
+			? userPoint.point() + amount
+			: userPoint.point() - amount;
 
 		UserPoint updatedUserPoint = userPointTable.insertOrUpdate(userPoint.id(), calculateAmount);
 		pointHistoryTable.insert(userPoint.id(), amount, transactionType, System.currentTimeMillis());
