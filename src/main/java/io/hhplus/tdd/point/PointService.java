@@ -51,6 +51,19 @@ public class PointService {
 	}
 
 	public UserPoint useUserPoint(long userId, long amount) {
-		return null;
+		if (amount > 5000)
+			throw new IllegalArgumentException("최대 사용가능한 포인트는 5000원 입니다");
+
+		UserPoint userPoint = userPointTable.selectById(userId);
+
+		if (userPoint == null)
+			throw new IllegalArgumentException("유저가 존재하지 않습니다");
+
+		if (userPoint.point() - amount < 0)
+			throw new IllegalArgumentException("사용가능한 포인트가 부족합니다");
+
+		UserPoint updatedUserPoint = userPointTable.insertOrUpdate(userId, userPoint.point() - amount);
+		pointHistoryTable.insert(userId, amount, TransactionType.USE, System.currentTimeMillis());
+		return updatedUserPoint;
 	}
 }

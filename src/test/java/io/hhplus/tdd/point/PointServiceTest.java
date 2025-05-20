@@ -202,16 +202,18 @@ class PointServiceTest {
 		long userId = 1;
 		long amount = 1000;
 		UserPoint userPoint = new UserPoint(userId, 10000, System.currentTimeMillis());
+		UserPoint updatedUserPoint = new UserPoint(userId, userPoint.point() - amount, System.currentTimeMillis());
 
 		when(userPointTable.selectById(userId)).thenReturn(userPoint);
+		when(userPointTable.insertOrUpdate(userId, userPoint.point() - amount)).thenReturn(updatedUserPoint);
 
 		UserPoint result = pointService.useUserPoint(userId, amount);
 
 		verify(userPointTable, times(1)).selectById(userId);
-		verify(pointHistoryTable, times(1)).insert(userId, amount, TransactionType.USE, anyLong());
 		verify(userPointTable, times(1)).insertOrUpdate(userId, userPoint.point() - amount);
-		assertThat(result).isEqualTo(userPoint);
-		assertThat(result.point()).isEqualTo(userPoint.point() - amount);
+		verify(pointHistoryTable, times(1)).insert(eq(userId), eq(amount), eq(TransactionType.USE), anyLong());
+		assertThat(result).isEqualTo(updatedUserPoint);
+		assertThat(result.point()).isEqualTo(updatedUserPoint.point());
 	}
 
 	@Test
@@ -225,8 +227,8 @@ class PointServiceTest {
 		assertThrows(IllegalArgumentException.class, () -> pointService.useUserPoint(userId, amount));
 
 		verify(userPointTable, times(1)).selectById(userId);
-		verify(pointHistoryTable, never()).insert(userId, amount, TransactionType.USE, anyLong());
 		verify(userPointTable, never()).insertOrUpdate(userId, userPoint.point() - amount);
+		verify(pointHistoryTable, never()).insert(eq(userId), eq(amount), eq(TransactionType.USE), anyLong());
 	}
 
 	@Test
@@ -240,8 +242,8 @@ class PointServiceTest {
 		assertThrows(IllegalArgumentException.class, () -> pointService.useUserPoint(userId, amount));
 
 		verify(userPointTable, times(1)).selectById(userId);
-		verify(pointHistoryTable, never()).insert(userId, amount, TransactionType.USE, anyLong());
 		verify(userPointTable, never()).insertOrUpdate(userId, userPoint.point() - amount);
+		verify(pointHistoryTable, never()).insert(eq(userId), eq(amount), eq(TransactionType.USE), anyLong());
 	}
 
 	/**
@@ -253,13 +255,30 @@ class PointServiceTest {
 		long amount = 5001;
 		UserPoint userPoint = new UserPoint(userId, 10000, System.currentTimeMillis());
 
-		when(userPointTable.selectById(userId)).thenReturn(userPoint);
-
 		assertThrows(IllegalArgumentException.class, () -> pointService.useUserPoint(userId, amount));
 
-		verify(userPointTable, times(1)).selectById(userId);
-		verify(pointHistoryTable, never()).insert(userId, amount, TransactionType.USE, anyLong());
+		verify(userPointTable, never()).selectById(userId);
 		verify(userPointTable, never()).insertOrUpdate(userId, userPoint.point() - amount);
+		verify(pointHistoryTable, never()).insert(eq(userId), eq(amount), eq(TransactionType.USE), anyLong());
+	}
+
+	@Test
+	void 유저포인트사용_5000원() {
+		long userId = 1;
+		long amount = 5000;
+		UserPoint userPoint = new UserPoint(userId, 10000, System.currentTimeMillis());
+		UserPoint updatedUserPoint = new UserPoint(userId, userPoint.point() - amount, System.currentTimeMillis());
+
+		when(userPointTable.selectById(userId)).thenReturn(userPoint);
+		when(userPointTable.insertOrUpdate(userId, userPoint.point() - amount)).thenReturn(updatedUserPoint);
+
+		UserPoint result = pointService.useUserPoint(userId, amount);
+
+		verify(userPointTable, times(1)).selectById(userId);
+		verify(userPointTable, times(1)).insertOrUpdate(userId, userPoint.point() - amount);
+		verify(pointHistoryTable, times(1)).insert(eq(userId), eq(amount), eq(TransactionType.USE), anyLong());
+		assertThat(result).isEqualTo(updatedUserPoint);
+		assertThat(result.point()).isEqualTo(updatedUserPoint.point());
 	}
 
 }
