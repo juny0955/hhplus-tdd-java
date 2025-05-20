@@ -78,7 +78,6 @@ class PointServiceTest {
 		);
 
 		when(userPointTable.selectById(userId)).thenReturn(null);
-		when(pointHistoryTable.selectAllByUserId(userId)).thenReturn(pointHistories);
 
 		assertThrows(IllegalArgumentException.class, () -> pointService.getUserPointHistories(userId));
 
