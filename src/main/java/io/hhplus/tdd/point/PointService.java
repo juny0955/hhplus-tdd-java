@@ -17,9 +17,9 @@ public class PointService {
 	private final PointHistoryTable pointHistoryTable;
 
 	/**
-	 * userId에 해당하는 유저 포인트 조회
-	 * @param userId
-	 * @return
+	 * 유저 포인트 조회
+	 * @param userId 조회할 유저 ID
+	 * @return 조회한 유저 포인트
 	 */
 	public UserPoint getUserPoint(long userId) {
 		UserPoint userPoint = userPointTable.selectById(userId);
@@ -30,6 +30,11 @@ public class PointService {
 		return userPoint;
 	}
 
+	/**
+	 * 유저 포인트 이용 내역 조회
+	 * @param userId 조회할 유저 ID
+	 * @return 조회한 유저 포인트 내역 목록
+	 */
 	public List<PointHistory> getUserPointHistories(long userId) {
 		UserPoint userPoint = userPointTable.selectById(userId);
 
@@ -39,6 +44,12 @@ public class PointService {
 		return pointHistoryTable.selectAllByUserId(userId);
 	}
 
+	/**
+	 * 유저 포인트 충전
+	 * @param userId 충전할 유저 ID
+	 * @param amount 충전할 포인트 금액
+	 * @return 충전 후 유저 포인트
+	 */
 	public UserPoint chargeUserPoint(long userId, long amount) {
 		if (amount < 500)
 			throw new IllegalArgumentException("최소 충전 포인트는 500원 이상이어야 합니다");
@@ -56,6 +67,12 @@ public class PointService {
 		return updateUserPoint;
 	}
 
+	/**
+	 * 유저 포인트 사용
+	 * @param userId 사용할 유저 ID
+	 * @param amount 사용할 포인트 금액
+	 * @return 사용 후 유저 포인트
+	 */
 	public UserPoint useUserPoint(long userId, long amount) {
 		if (amount > 5000)
 			throw new IllegalArgumentException("최대 사용가능한 포인트는 5000원 입니다");
