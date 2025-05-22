@@ -1,6 +1,8 @@
 package io.hhplus.tdd.point;
 
 import java.util.List;
+import java.util.concurrent.ConcurrentHashMap;
+import java.util.concurrent.locks.ReentrantLock;
 
 import org.springframework.stereotype.Service;
 
@@ -17,6 +19,17 @@ public class PointService {
 
 	private final UserPointTable userPointTable;
 	private final PointHistoryTable pointHistoryTable;
+
+	private final ConcurrentHashMap<Long, ReentrantLock> userLocks = new ConcurrentHashMap<>();
+
+	/**
+	 * 유저 락을 가져오거나 생성
+	 * @param userId 유저 ID
+	 * @return 해당 사용자 ReentrantLock
+	 */
+	private ReentrantLock getUserLock(long userId) {
+		return userLocks.computeIfAbsent(userId, id -> new ReentrantLock(true)); // 공정 모드를 사용해야 순서대로 처리됨
+	}
 
 	/**
 	 * 유저 포인트 조회
@@ -46,9 +59,15 @@ public class PointService {
 		if (amount < MIN_CHARGE_POINT)
 			throw new IllegalArgumentException(PointError.BELOW_MIN_CHARGE_POINT.getMessage());
 
-		UserPoint userPoint = userPointTable.selectById(userId);
+		ReentrantLock lock = getUserLock(userId);
+		lock.lock();
+		try {
+			UserPoint userPoint = userPointTable.selectById(userId);
 
-		return processUpdateUserPoint(userPoint.validateMaxPoint(amount), amount, TransactionType.CHARGE);
+			return processUpdateUserPoint(userPoint.validateMaxPoint(amount), amount, TransactionType.CHARGE);
+		} finally {
+			lock.unlock();
+		}
 	}
 
 	/**
@@ -61,9 +80,15 @@ public class PointService {
 		if (amount > MAX_USE_POINT)
 			throw new IllegalArgumentException(PointError.EXCEED_MAX_USE_POINT.getMessage());
 
-		UserPoint userPoint = userPointTable.selectById(userId);
+		ReentrantLock lock = getUserLock(userId);
+		lock.lock();
+		try {
+			UserPoint userPoint = userPointTable.selectById(userId);
 
-		return processUpdateUserPoint(userPoint.validateLeftPoint(amount), amount, TransactionType.USE);
+			return processUpdateUserPoint(userPoint.validateLeftPoint(amount), amount, TransactionType.USE);
+		} finally {
+			lock.unlock();
+		}
 	}
 
 	/**

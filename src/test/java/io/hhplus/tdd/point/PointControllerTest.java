@@ -5,7 +5,7 @@ import static org.springframework.test.web.servlet.request.MockMvcRequestBuilder
 import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.*;
 
 import java.util.ArrayList;
-import java.util.Arrays;
+import java.util.Collections;
 import java.util.List;
 import java.util.concurrent.CompletableFuture;
 import java.util.concurrent.ExecutionException;
@@ -36,13 +36,14 @@ class PointControllerTest {
 	@Autowired
 	private PointHistoryTable pointHistoryTable;
 
-	private static final long USER_ID = 1;
+	private static long userId = 1;
 	private static final long INIT_POINT = 50000;
 	private static final int THREAD_SIZE = 10;
 
 	@BeforeEach
 	void beforeEach() {
-		userPointTable.insertOrUpdate(USER_ID, INIT_POINT);
+		userId++;
+		userPointTable.insertOrUpdate(userId, INIT_POINT);
 	}
 
 	/**
@@ -58,7 +59,7 @@ class PointControllerTest {
 		for (int i = 0; i < THREAD_SIZE; i++) {
 			futures.add(CompletableFuture.runAsync(() -> {
 				try {
-					mockMvc.perform(patch("/point/{id}/charge", USER_ID)
+					mockMvc.perform(patch("/point/{id}/charge", userId)
 							.contentType(MediaType.APPLICATION_JSON)
 							.content(String.valueOf(amount)))
 						.andExpect(status().isOk());
@@ -71,12 +72,12 @@ class PointControllerTest {
 		CompletableFuture.allOf(futures.toArray(new CompletableFuture[0])).get(10, TimeUnit.SECONDS);
 
 		// 최종 잔액 확인
-		UserPoint userPoint = userPointTable.selectById(USER_ID);
+		UserPoint userPoint = userPointTable.selectById(userId);
 		long finalPoint = INIT_POINT + THREAD_SIZE * amount; // 50000 + 10 * 1000 = 60000원
 		assertThat(userPoint.point()).isEqualTo(finalPoint);
 
 		// 히스토리 개수 확인 10건
-		List<PointHistory> histories = pointHistoryTable.selectAllByUserId(USER_ID);
+		List<PointHistory> histories = pointHistoryTable.selectAllByUserId(userId);
 		assertThat(histories).hasSize(THREAD_SIZE);
 	}
 
@@ -93,7 +94,7 @@ class PointControllerTest {
 		for (int i = 0; i < THREAD_SIZE; i++) {
 			futures.add(CompletableFuture.runAsync(() -> {
 				try {
-					mockMvc.perform(patch("/point/{id}/use", USER_ID)
+					mockMvc.perform(patch("/point/{id}/use", userId)
 							.contentType(MediaType.APPLICATION_JSON)
 							.content(String.valueOf(amount)))
 						.andExpect(status().isOk());
@@ -106,12 +107,12 @@ class PointControllerTest {
 		CompletableFuture.allOf(futures.toArray(new CompletableFuture[0])).get(10, TimeUnit.SECONDS);
 
 		// 최종 잔액 확인
-		UserPoint userPoint = userPointTable.selectById(USER_ID);
-		long finalPoint = INIT_POINT + THREAD_SIZE * amount; // 50000 - 10 * 1000 = 40000원
+		UserPoint userPoint = userPointTable.selectById(userId);
+		long finalPoint = INIT_POINT - THREAD_SIZE * amount; // 50000 - 10 * 1000 = 40000원
 		assertThat(userPoint.point()).isEqualTo(finalPoint);
 
 		// 히스토리 개수 확인 10건
-		List<PointHistory> histories = pointHistoryTable.selectAllByUserId(USER_ID);
+		List<PointHistory> histories = pointHistoryTable.selectAllByUserId(userId);
 		assertThat(histories).hasSize(THREAD_SIZE);
 	}
 
@@ -127,13 +128,14 @@ class PointControllerTest {
 
 		// 요청 타입 준비 THREAD_SIZE와 동일 10개
 		// 사용 4번 충전 6번
-		TransactionType[] transactionTypes = {
+		List<TransactionType> transactionTypes = List.of(
 			TransactionType.USE, TransactionType.USE, TransactionType.CHARGE,
 			TransactionType.CHARGE, TransactionType.CHARGE, TransactionType.USE,
 			TransactionType.CHARGE, TransactionType.CHARGE, TransactionType.USE,
 			TransactionType.CHARGE
-		};
+		);
 
+		List<TransactionType> executionOrder = Collections.synchronizedList(new ArrayList<>());
 		List<CompletableFuture<Void>> futures = new ArrayList<>();
 
 		// 실패 경우는 제외함 초기 포인트 50000원 감안
@@ -141,19 +143,23 @@ class PointControllerTest {
 			futures.add(CompletableFuture.runAsync(() -> {
 				if (transactionType.equals(TransactionType.USE)) {
 					try {
-						mockMvc.perform(patch("/point/{id}/use", USER_ID)
+						mockMvc.perform(patch("/point/{id}/use", userId)
 								.contentType(MediaType.APPLICATION_JSON)
 								.content(String.valueOf(useAmount)))
-							.andExpect(status().isOk());
+								.andExpect(status().isOk());
+
+						executionOrder.add(transactionType);
 					} catch (Exception e) {
 						throw new RuntimeException(e);
 					}
 				} else {
 					try {
-						mockMvc.perform(patch("/point/{id}/charge", USER_ID)
+						mockMvc.perform(patch("/point/{id}/charge", userId)
 								.contentType(MediaType.APPLICATION_JSON)
 								.content(String.valueOf(chargeAmount)))
-							.andExpect(status().isOk());
+								.andExpect(status().isOk());
+
+						executionOrder.add(transactionType);
 					} catch (Exception e) {
 						throw new RuntimeException(e);
 					}
@@ -164,24 +170,24 @@ class PointControllerTest {
 		CompletableFuture.allOf(futures.toArray(new CompletableFuture[0])).get(10, TimeUnit.SECONDS);
 
 		// 최종 잔액 확인
-		UserPoint userPoint = userPointTable.selectById(USER_ID);
+		UserPoint userPoint = userPointTable.selectById(userId);
 		/**
 		 * 충전: 2000 * 6 = 12000
 		 * 사용: 1000 * 4 = 4000
 		 * 50000 + 12000 - 4000 = 58000
 		 */
-		long finalPoint = INIT_POINT + Arrays.stream(transactionTypes)
+		long finalPoint = INIT_POINT + transactionTypes.stream()
 			.mapToLong(type -> type == TransactionType.CHARGE ? chargeAmount : -useAmount)
 			.sum();
 		assertThat(userPoint.point()).isEqualTo(finalPoint);
 
 		// 히스토리 체크
-		List<PointHistory> histories = pointHistoryTable.selectAllByUserId(USER_ID);
+		List<PointHistory> histories = pointHistoryTable.selectAllByUserId(userId);
 		assertThat(histories).hasSize(THREAD_SIZE);
 
 		// 히스토리 요청 순서 확인
 		for (int i = 0; i < 10; i++)
-			assertThat(histories.get(i).type()).isEqualTo(transactionTypes[i]);
+			assertThat(histories.get(i).type()).isEqualTo(executionOrder.get(i));
 
 	}
 
