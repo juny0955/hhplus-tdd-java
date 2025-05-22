@@ -12,14 +12,14 @@ public record UserPoint(
 
     public UserPoint validateLeftPoint(long amount) {
         if (point - amount < 0)
-            throw new IllegalArgumentException("사용가능한 포인트가 부족합니다");
+            throw new IllegalArgumentException(PointError.NOT_ENOUGH_POINT_TO_USE.getMessage());
 
         return this;
     }
 
     public UserPoint validateMaxPoint(long amount) {
         if (point + amount > 100000)
-            throw new IllegalArgumentException("유저의 보유 포인트는 10만원을 넘을수 없습니다");
+            throw new IllegalArgumentException(PointError.EXCEED_MAX_HOLD_POINT.getMessage());
 
         return this;
     }

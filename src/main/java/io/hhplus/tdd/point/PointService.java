@@ -44,7 +44,7 @@ public class PointService {
 	 */
 	public UserPoint chargeUserPoint(long userId, long amount) {
 		if (amount < MIN_CHARGE_POINT)
-			throw new IllegalArgumentException("최소 충전 포인트는 500원 이상이어야 합니다");
+			throw new IllegalArgumentException(PointError.BELOW_MIN_CHARGE_POINT.getMessage());
 
 		UserPoint userPoint = userPointTable.selectById(userId);
 
@@ -59,7 +59,7 @@ public class PointService {
 	 */
 	public UserPoint useUserPoint(long userId, long amount) {
 		if (amount > MAX_USE_POINT)
-			throw new IllegalArgumentException("최대 사용가능한 포인트는 5000원 입니다");
+			throw new IllegalArgumentException(PointError.EXCEED_MAX_USE_POINT.getMessage());
 
 		UserPoint userPoint = userPointTable.selectById(userId);
 
